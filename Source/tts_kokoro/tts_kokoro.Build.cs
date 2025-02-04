@@ -14,7 +14,6 @@ public class tts_kokoro : ModuleRules
 				"CoreUObject",
 				"Engine",
 				"tts_kokoroLibrary",
-				"Projects",
 			}
 		);
 
@@ -33,7 +32,6 @@ public class tts_kokoro : ModuleRules
 			PrivateDependencyModuleNames.AddRange(
 				new string[]
 				{
-					"ToolMenus",
 					"CoreUObject",
 					"Engine",
 					"Core"
