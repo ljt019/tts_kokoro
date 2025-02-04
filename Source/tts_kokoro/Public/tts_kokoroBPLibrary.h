@@ -1,13 +1,9 @@
-// tts_kokoroBPLibrary.h
 #pragma once
 
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "Sound/SoundWave.h"
 #include "tts_kokoroBPLibrary.generated.h"
 
-/**
- * A Blueprint Function Library to expose TTS functionality.
- */
 UCLASS()
 class TTS_KOKORO_API Utts_kokoroBPLibrary : public UBlueprintFunctionLibrary
 {

@@ -12,11 +12,11 @@ public class tts_kokoroLibrary : ModuleRules
 
 		if (Target.Platform == UnrealTargetPlatform.Win64)
 		{
-			// Add the import library
+			// import static files
 			PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "x64", "Release", "cargs.lib"));
 			PublicAdditionalLibraries.Add(Path.Combine(ModuleDirectory, "x64", "Release", "sherpa-onnx-c-api.lib"));
 
-			// Delay-load the DLL, so we can load it from the right place first
+			// Delay-load the DLL
 			PublicDelayLoadDLLs.Add("cargs.dll");
 			PublicDelayLoadDLLs.Add("espeak-ng.dll");
 			PublicDelayLoadDLLs.Add("onnxruntime.dll");
