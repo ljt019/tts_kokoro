@@ -11,18 +11,18 @@ class UTTSBPLibrary : public UBlueprintFunctionLibrary
     GENERATED_BODY()
 
 public:
-    // Constructor declaration (with a default parameter for convenience)
     UTTSBPLibrary(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
     /**
-     * Speaks the provided text using the Text-To-Speech system.
+     * Generates a SoundWave from the provided text using the KokoroTTs Model.
+     * 
      * NOTE: This is a SYNCHRONOUS function that will block until processing completes.
-     * Consider using GenerateTTSSoundWaveAsync for non-blocking operation.
+     * Consider using GenerateTTSSoundWaveAsync for non-blocking operation, for most cases.
      *
-     * @param TextToSpeak The text to be spoken.
+     * @param TextToSpeak The text to be used for generating the soundwave.
      */
-    UFUNCTION(BlueprintCallable, Category = "TTS")
-    static USoundWave* Speak(const FString& TextToSpeak);
+    UFUNCTION(BlueprintCallable, Category = "TTS", DisplayName = "Generate TTS SoundWave")
+    static USoundWave* GenerateTTSSoundWave(const FString& TextToSpeak);
 
 private:
     // Helper function to convert generated audio to a USoundWave.

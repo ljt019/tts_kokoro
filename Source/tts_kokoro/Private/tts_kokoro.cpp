@@ -1,5 +1,3 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
-
 #include "tts_kokoro.h"
 #include "Misc/MessageDialog.h"
 #include "Modules/ModuleManager.h"
@@ -7,14 +5,12 @@
 #include "Misc/Paths.h"
 #include "HAL/PlatformProcess.h"
 
-// Include the header for the ExampleLibrary functions
 #include "tts_kokoroLibrary/ExampleLibrary.h"
 
 #define LOCTEXT_NAMESPACE "Ftts_kokoroModule"
 
 void Ftts_kokoroModule::StartupModule()
 {
-	// This code executes when your module is loaded into memory.
 	// Get the base directory of this plugin.
 	FString BaseDir = IPluginManager::Get().FindPlugin("tts_kokoro")->GetBaseDir();
 
@@ -28,19 +24,18 @@ void Ftts_kokoroModule::StartupModule()
 	ExampleLibraryPath = FPaths::Combine(*BaseDir, TEXT("Binaries/ThirdParty/tts_kokoroLibrary/Linux/x86_64-unknown-linux-gnu/libExampleLibrary.so"));
 #endif
 
-	ExampleLibraryHandle = !ExampleLibraryPath.IsEmpty() ? FPlatformProcess::GetDllHandle(*ExampleLibraryPath) : nullptr;
-	if (ExampleLibraryHandle)
-	{
+	//ExampleLibraryHandle = !ExampleLibraryPath.IsEmpty() ? FPlatformProcess::GetDllHandle(*ExampleLibraryPath) : nullptr;
+	//if (ExampleLibraryHandle)
+	//{
 		// Call a test function from ExampleLibrary.
-		ExampleLibraryFunction();
-	}
-	else
-	{
-		FMessageDialog::Open(EAppMsgType::Ok, LOCTEXT("ThirdPartyLibraryError", "Failed to load ExampleLibrary.dll"));
-	}
+		//ExampleLibraryFunction();
+	//}
+	//else
+	//{
+	//	FMessageDialog::Open(EAppMsgType::Ok, LOCTEXT("ThirdPartyLibraryError", "Failed to load ExampleLibrary.dll"));
+	//}
 
-	// Now load the additional DLL needed for your Blueprint functions.
-	// Here we assume sherpa-onnx-c-api.dll is used by your Blueprint function library.
+	// load sherpa onnx for use in loading model.
 	FString SherpaDllPath;
 #if PLATFORM_WINDOWS
 	SherpaDllPath = FPaths::Combine(*BaseDir, TEXT("Binaries/ThirdParty/tts_kokoroLibrary/Win64/sherpa-onnx-c-api.dll"));

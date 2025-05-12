@@ -5,7 +5,6 @@
 #include "Kismet/GameplayStatics.h"
 #include "HAL/PlatformProcess.h"
 
-// Include the TTS library's header
 #include "tts_kokoroLibrary/c-api.h"
 
 UTTSAsyncAction* UTTSAsyncAction::GenerateTTSSoundWaveAsync(
@@ -143,7 +142,7 @@ bool UTTSAsyncAction::GeneratePCMData(TArray<uint8>& OutPCM,
     const int32 SampleRate = audio->sample_rate;
     const int32 NumChannels = 1; // Mono audio
 
-    OutPCM.AddUninitialized(NumFloatSamples * sizeof(int16));  // 2 bytes per sample
+    OutPCM.AddUninitialized(NumFloatSamples * sizeof(int16));
     OutSampleRate = SampleRate;
     OutNumChannels = NumChannels;
 

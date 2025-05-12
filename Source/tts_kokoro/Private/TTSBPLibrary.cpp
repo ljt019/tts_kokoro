@@ -1,9 +1,5 @@
-// TTSBPLibrary.cpp
-
-// The corresponding header must be the first include
 #include "TTSBPLibrary.h"
 
-// Other includes can follow
 #include <cstdlib>  // For abort()
 #include "CoreMinimal.h"
 #include "HAL/PlatformProcess.h"
@@ -15,9 +11,11 @@
 
 // Provide a stub definition for std::_Xlength_error to satisfy the linker.
 // WARNING: This stub will abort the application if it is ever called.
+// This is only necessary because the original code uses std::string and
+// std::vector, which may throw exceptions that are not handled in this context.
+// This is a workaround for the Unreal Engine build system.
 namespace std {
     void _Xlength_error(const char* s) {
-        // Optionally, log the error message before aborting.
         abort();
     }
 }
@@ -35,7 +33,7 @@ static int32 ProgressCallback(const float* /*samples*/, int32 /*num_samples*/, f
     return 1; // Continue processing
 }
 
-USoundWave* UTTSBPLibrary::Speak(const FString& TextToSpeak)
+USoundWave* UTTSBPLibrary::GenerateTTSSoundWave(const FString& TextToSpeak)
 {
     UE_LOG(LogTemp, Log, TEXT("UTTSBPLibrary::Speak() Called with text: %s"), *TextToSpeak);
 
@@ -85,7 +83,7 @@ USoundWave* UTTSBPLibrary::Speak(const FString& TextToSpeak)
     config.model.num_threads = 2;
     config.model.debug = 1;
 
-    // Prepare the input text (create a persistent string for the text)
+    // Prepare the input text
     std::string InputTextUtf8 = TCHAR_TO_UTF8(*TextToSpeak);
     const char* inputText = InputTextUtf8.c_str();
     UE_LOG(LogTemp, Log, TEXT("Input text (UTF8): %s"), UTF8_TO_TCHAR(inputText));
@@ -102,7 +100,7 @@ USoundWave* UTTSBPLibrary::Speak(const FString& TextToSpeak)
     }
     UE_LOG(LogTemp, Log, TEXT("TTS instance created successfully."));
 
-    // Generate audio with a progress callback.
+    // Generate audio.
     UE_LOG(LogTemp, Log, TEXT("Generating audio..."));
     const SherpaOnnxGeneratedAudio* audio = SherpaOnnxOfflineTtsGenerateWithProgressCallback(tts, inputText, speaker_id, speed, ProgressCallback);
     if (!audio)
@@ -113,7 +111,7 @@ USoundWave* UTTSBPLibrary::Speak(const FString& TextToSpeak)
     }
     UE_LOG(LogTemp, Log, TEXT("Audio generation completed."));
 
-    // Convert the generated audio into a custom USoundWaveProcedural (UMySoundWave).
+    // Convert the generated audio into a custom USoundWaveProcedural.
     UE_LOG(LogTemp, Log, TEXT("Converting generated audio to SoundWave..."));
     USoundWave* SoundWave = ConvertGeneratedAudioToSoundWave(audio);
 

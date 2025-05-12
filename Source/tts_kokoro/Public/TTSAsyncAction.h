@@ -13,8 +13,9 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnTTSFailed);
 
 /**
- * Blueprint node "Generate TTS SoundWave".
- * Does *not* block. When done, OnSuccess or OnFailure fires.
+ * Generates a SoundWave from the provided text using the KokoroTTs Model asynchronously.
+ *
+ * @param TextToSpeak The text to be used for generating the soundwave.
  */
 UCLASS(meta = (DisplayName = "Generate TTS SoundWave Async"))
 class TTS_KOKORO_API UTTSAsyncAction : public UBlueprintAsyncActionBase
@@ -22,25 +23,20 @@ class TTS_KOKORO_API UTTSAsyncAction : public UBlueprintAsyncActionBase
     GENERATED_BODY()
 
 public:
-    // The factory (blueprint node).
     UFUNCTION(BlueprintCallable, meta = (BlueprintInternalUseOnly = "true", WorldContext = "WorldContextObject", DisplayName = "Generate TTS SoundWave Async"), Category = "TTS")
     static UTTSAsyncAction* GenerateTTSSoundWaveAsync(
         UObject* WorldContextObject,
         const FString& TextToSpeak);
 
-    // Fired on success. Passes the new SoundWave.
     UPROPERTY(BlueprintAssignable)
     FOnTTSCompleted OnSuccess;
 
-    // Fired on failure.
     UPROPERTY(BlueprintAssignable)
     FOnTTSFailed OnFailure;
 
-    // UObject interface
     virtual void Activate() override;
 
 private:
-    // Stash these from the factory call.
     UObject* WorldContextObject;
     FString TextToSpeak;
 
