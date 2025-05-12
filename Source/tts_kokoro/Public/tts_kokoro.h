@@ -3,6 +3,7 @@
 #pragma once
 
 #include "Modules/ModuleManager.h"
+#include "TTSAsyncAction.h"
 
 class Ftts_kokoroModule : public IModuleInterface
 {
@@ -13,8 +14,8 @@ public:
 
 private:
 	/** Handle to the test DLL (ExampleLibrary) */
-	void* ExampleLibraryHandle = nullptr;
+	void *ExampleLibraryHandle = nullptr;
 
 	/** Handle to the DLL needed for Blueprint functions (sherpa-onnx-c-api) */
-	void* SherpaDllHandle = nullptr;
+	void *SherpaDllHandle = nullptr;
 };

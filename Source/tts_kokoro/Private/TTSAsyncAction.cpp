@@ -1,50 +1,68 @@
-// TTSBPLibrary.cpp
-
-// The corresponding header must be the first include
-#include "TTSBPLibrary.h"
-
-// Other includes can follow
-#include <cstdlib>  // For abort()
-#include "CoreMinimal.h"
-#include "HAL/PlatformProcess.h"
+#include "TTSAsyncAction.h"
 #include "Interfaces/IPluginManager.h"
 #include "Misc/Paths.h"
-#include "Modules/ModuleManager.h"
+#include "Async/Async.h"
+#include "Kismet/GameplayStatics.h"
+#include "HAL/PlatformProcess.h"
+
+// Include the TTS library's header
 #include "tts_kokoroLibrary/c-api.h"
-#include "MySoundWave.h"
 
-// Provide a stub definition for std::_Xlength_error to satisfy the linker.
-// WARNING: This stub will abort the application if it is ever called.
-namespace std {
-    void _Xlength_error(const char* s) {
-        // Optionally, log the error message before aborting.
-        abort();
-    }
+UTTSAsyncAction* UTTSAsyncAction::GenerateTTSSoundWaveAsync(
+    UObject* WorldContextObject,
+    const FString& TextToSpeak)
+{
+  UTTSAsyncAction* Node = NewObject<UTTSAsyncAction>();
+  Node->WorldContextObject = WorldContextObject;
+  Node->TextToSpeak = TextToSpeak;
+  return Node;
 }
 
-UTTSBPLibrary::UTTSBPLibrary(const FObjectInitializer& ObjectInitializer)
-    : Super(ObjectInitializer)
+int32 UTTSAsyncAction::ProgressCallback(const float* /*samples*/, int32 /*num_samples*/, float progress)
 {
-    UE_LOG(LogTemp, Log, TEXT("UTTSBPLibrary Constructor Called."));
-}
-
-// Progress callback for TTS generation.
-static int32 ProgressCallback(const float* /*samples*/, int32 /*num_samples*/, float progress)
-{
-    UE_LOG(LogTemp, Log, TEXT("TTS Progress: %.3f%%"), progress * 100);
+    UE_LOG(LogTemp, Log, TEXT("TTS Async Progress: %.3f%%"), progress * 100);
     return 1; // Continue processing
 }
 
-USoundWave* UTTSBPLibrary::Speak(const FString& TextToSpeak)
+void UTTSAsyncAction::Activate()
 {
-    UE_LOG(LogTemp, Log, TEXT("UTTSBPLibrary::Speak() Called with text: %s"), *TextToSpeak);
+  // Kick off the heavy work on a background thread:
+  Async(EAsyncExecution::ThreadPool, [this]()
+  {
+    TArray<uint8> PCM;
+    int32 SR = 0, CH = 0;
+    bool bOk = GeneratePCMData(PCM, SR, CH);
 
+    // Back to game thread to build the SoundWave and fire delegates:
+    AsyncTask(ENamedThreads::GameThread, [this, PCM = MoveTemp(PCM),
+                                         SR, CH, bOk]()
+    {
+      if (!bOk)
+      {
+        OnFailure.Broadcast();
+      }
+      else
+      {
+        UMySoundWave* SW = NewObject<UMySoundWave>(WorldContextObject);
+        SW->Init(PCM, SR, CH);
+        OnSuccess.Broadcast(SW);
+      }
+      // Let Blueprint garbage‐collect this node:
+      this->SetReadyToDestroy();
+    });
+  });
+}
+
+bool UTTSAsyncAction::GeneratePCMData(TArray<uint8>& OutPCM,
+                                      int32& OutSampleRate,
+                                      int32& OutNumChannels)
+{
     // Get the plugin base directory
     TSharedPtr<IPlugin> Plugin = IPluginManager::Get().FindPlugin(TEXT("tts_kokoro"));
     if (!Plugin.IsValid())
     {
         UE_LOG(LogTemp, Error, TEXT("Failed to find tts_kokoro plugin."));
-        return nullptr;
+        return false;
     }
     FString PluginDir = Plugin->GetBaseDir();
 
@@ -98,7 +116,7 @@ USoundWave* UTTSBPLibrary::Speak(const FString& TextToSpeak)
     if (!tts)
     {
         UE_LOG(LogTemp, Error, TEXT("Failed to create sherpa-onnx TTS instance."));
-        return nullptr;
+        return false;
     }
     UE_LOG(LogTemp, Log, TEXT("TTS instance created successfully."));
 
@@ -109,54 +127,37 @@ USoundWave* UTTSBPLibrary::Speak(const FString& TextToSpeak)
     {
         UE_LOG(LogTemp, Error, TEXT("Failed to generate audio from text."));
         SherpaOnnxDestroyOfflineTts(tts);
-        return nullptr;
+        return false;
     }
     UE_LOG(LogTemp, Log, TEXT("Audio generation completed."));
 
-    // Convert the generated audio into a custom USoundWaveProcedural (UMySoundWave).
-    UE_LOG(LogTemp, Log, TEXT("Converting generated audio to SoundWave..."));
-    USoundWave* SoundWave = ConvertGeneratedAudioToSoundWave(audio);
+    if (!audio || !audio->samples)
+    {
+        UE_LOG(LogTemp, Error, TEXT("Invalid generated audio."));
+        SherpaOnnxDestroyOfflineTts(tts);
+        return false;
+    }
+
+    UE_LOG(LogTemp, Log, TEXT("Converting audio: NumFloatSamples=%d, SampleRate=%d"), audio->n, audio->sample_rate);
+    const int32 NumFloatSamples = audio->n;
+    const int32 SampleRate = audio->sample_rate;
+    const int32 NumChannels = 1; // Mono audio
+
+    OutPCM.AddUninitialized(NumFloatSamples * sizeof(int16));  // 2 bytes per sample
+    OutSampleRate = SampleRate;
+    OutNumChannels = NumChannels;
+
+    for (int32 i = 0; i < NumFloatSamples; i++)
+    {
+        float SampleFloat = FMath::Clamp(audio->samples[i], -1.0f, 1.0f);
+        int16 SampleInt16 = static_cast<int16>(SampleFloat * 32767.0f);
+        ((int16*)OutPCM.GetData())[i] = SampleInt16;
+    }
+    UE_LOG(LogTemp, Log, TEXT("PCM data conversion complete."));
 
     // Clean up the TTS instance.
     SherpaOnnxDestroyOfflineTts(tts);
     UE_LOG(LogTemp, Log, TEXT("Cleaned up TTS instance."));
 
-    return SoundWave;
-}
-
-USoundWave* UTTSBPLibrary::ConvertGeneratedAudioToSoundWave(const SherpaOnnxGeneratedAudio* GeneratedAudio)
-{
-    if (!GeneratedAudio || !GeneratedAudio->samples)
-    {
-        UE_LOG(LogTemp, Error, TEXT("Invalid generated audio."));
-        return nullptr;
-    }
-
-    UE_LOG(LogTemp, Log, TEXT("Converting audio: NumFloatSamples=%d, SampleRate=%d"), GeneratedAudio->n, GeneratedAudio->sample_rate);
-    const int32 NumFloatSamples = GeneratedAudio->n;
-    const int32 SampleRate = GeneratedAudio->sample_rate;
-    const int32 NumChannels = 1; // Mono audio
-
-    TArray<uint8> PCMData;
-    PCMData.AddUninitialized(NumFloatSamples * sizeof(int16));  // 2 bytes per sample
-
-    for (int32 i = 0; i < NumFloatSamples; i++)
-    {
-        float SampleFloat = FMath::Clamp(GeneratedAudio->samples[i], -1.0f, 1.0f);
-        int16 SampleInt16 = static_cast<int16>(SampleFloat * 32767.0f);
-        ((int16*)PCMData.GetData())[i] = SampleInt16;
-    }
-    UE_LOG(LogTemp, Log, TEXT("PCM data conversion complete."));
-
-    UMySoundWave* SoundWave = NewObject<UMySoundWave>(UMySoundWave::StaticClass());
-    if (!SoundWave)
-    {
-        UE_LOG(LogTemp, Error, TEXT("Failed to create UMySoundWave object."));
-        return nullptr;
-    }
-
-    SoundWave->Init(PCMData, SampleRate, NumChannels);
-    UE_LOG(LogTemp, Log, TEXT("SoundWave initialized successfully."));
-
-    return SoundWave;
+    return true;
 }

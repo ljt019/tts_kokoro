@@ -16,6 +16,8 @@ public:
 
     /**
      * Speaks the provided text using the Text-To-Speech system.
+     * NOTE: This is a SYNCHRONOUS function that will block until processing completes.
+     * Consider using GenerateTTSSoundWaveAsync for non-blocking operation.
      *
      * @param TextToSpeak The text to be spoken.
      */
